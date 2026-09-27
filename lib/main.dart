@@ -3591,12 +3591,29 @@ class _DriverDialogState extends State<DriverDialog> {
   final formKey = GlobalKey<FormState>();
   final fields = List.generate(5, (_) => TextEditingController());
   late String selectedOperation;
-  final labels = [
-    'CÉDULA / ID',
-    'CHOFER',
-    'PLACA',
-    'CEL.',
-    'CLIENTE',
+
+  static const _fieldLabels = [
+    'Cédula o ID',
+    'Nombre del chofer',
+    'Placa del vehículo',
+    'Celular',
+    'Cliente',
+  ];
+
+  static const _fieldHints = [
+    'Ej. V-12345678',
+    'Nombre y apellido',
+    'Ej. AB123CD',
+    'Ej. 0412 123 4567',
+    'Empresa o destino',
+  ];
+
+  static const _fieldIcons = [
+    Icons.badge_outlined,
+    Icons.person_outline_rounded,
+    Icons.local_shipping_outlined,
+    Icons.phone_outlined,
+    Icons.business_outlined,
   ];
 
   @override
@@ -3621,65 +3638,312 @@ class _DriverDialogState extends State<DriverDialog> {
     super.dispose();
   }
 
+  void _save() {
+    if (!formKey.currentState!.validate()) return;
+    Navigator.pop(
+      context,
+      Driver(
+        id: fields[0].text.trim(),
+        name: fields[1].text.trim(),
+        plate: fields[2].text.trim().toUpperCase(),
+        phone: fields[3].text.trim(),
+        client: fields[4].text.trim(),
+        operation: selectedOperation,
+        arrival: widget.initialDriver?.arrival ?? 'PENDIENTE',
+        call: widget.initialDriver?.call ?? 'PENDIENTE',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        widget.initialDriver == null ? 'Nuevo chofer' : 'Editar chofer',
-      ),
-      content: Form(
-        key: formKey,
-        child: SingleChildScrollView(
+    final isEditing = widget.initialDriver != null;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: screenWidth > 680 ? 560 : 520),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFD),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: navy.withValues(alpha: 0.22),
+                blurRadius: 34,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ...List.generate(
-                5,
-                (index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: TextFormField(
-                    controller: fields[index],
-                    textCapitalization: TextCapitalization.characters,
-                    textInputAction: index == 4 ? TextInputAction.done : TextInputAction.next,
-                    decoration: InputDecoration(
-                      labelText: labels[index],
-                      border: const OutlineInputBorder(),
+              _buildHeader(isEditing),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height - 190,
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Datos del chofer',
+                          style: TextStyle(
+                            color: navy,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Completa la información para registrarlo en la jornada.',
+                          style: TextStyle(
+                            color: ink.withValues(alpha: 0.62),
+                            fontSize: 13,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        ...List.generate(
+                          fields.length,
+                          (index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 13),
+                            child: TextFormField(
+                              controller: fields[index],
+                              textCapitalization: TextCapitalization.characters,
+                              textInputAction: index == fields.length - 1
+                                  ? TextInputAction.done
+                                  : TextInputAction.next,
+                              keyboardType: index == 3
+                                  ? TextInputType.phone
+                                  : TextInputType.text,
+                              onFieldSubmitted: index == fields.length - 1
+                                  ? (_) => _save()
+                                  : null,
+                              decoration: InputDecoration(
+                                labelText: _fieldLabels[index],
+                                hintText: _fieldHints[index],
+                                prefixIcon: Icon(_fieldIcons[index]),
+                                floatingLabelStyle: const TextStyle(
+                                  color: navy,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 17,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Este campo es obligatorio';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        const Text(
+                          'Tipo de operación',
+                          style: TextStyle(
+                            color: navy,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEAF0F7),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Row(
+                            children: [
+                              _operationChoice(
+                                'Inspección',
+                                Icons.search_rounded,
+                              ),
+                              _operationChoice(
+                                'Colocación',
+                                Icons.build_outlined,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Campo requerido'
-                        : null,
                   ),
+                ),
+              ),
+              _buildActions(isEditing),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(bool isEditing) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 19, 14, 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF12233F), Color(0xFF274B7A)],
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+            ),
+            child: Icon(
+              isEditing
+                  ? Icons.edit_outlined
+                  : Icons.person_add_alt_1_rounded,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEditing ? 'Editar chofer' : 'Nuevo chofer',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  isEditing
+                      ? 'Actualiza sus datos de registro'
+                      : 'Registra una unidad para la jornada',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.76),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            tooltip: 'Cerrar',
+            color: Colors.white,
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _operationChoice(String label, IconData icon) {
+    final selected = selectedOperation == label;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => selectedOperation = label),
+        borderRadius: BorderRadius.circular(11),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: navy.withValues(alpha: 0.10),
+                      blurRadius: 7,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? orange : navy.withValues(alpha: 0.58),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? navy : navy.withValues(alpha: 0.64),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (!formKey.currentState!.validate()) return;
-            Navigator.pop(
-              context,
-              Driver(
-                id: fields[0].text.trim(),
-                name: fields[1].text.trim(),
-                plate: fields[2].text.trim().toUpperCase(),
-                phone: fields[3].text.trim(),
-                client: fields[4].text.trim(),
-                operation: selectedOperation,
-                arrival: widget.initialDriver?.arrival ?? 'PENDIENTE',
-                call: widget.initialDriver?.call ?? 'PENDIENTE',
+    );
+  }
+
+  Widget _buildActions(bool isEditing) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE7EDF5))),
+      ),
+      child: Row(
+        children: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: navy.withValues(alpha: 0.72),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            ),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: _save,
+              style: FilledButton.styleFrom(
+                backgroundColor: orange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-            );
-          },
-          child: const Text('Guardar'),
-        ),
-      ],
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 19),
+              label: Text(
+                isEditing ? 'Guardar cambios' : 'Registrar chofer',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
